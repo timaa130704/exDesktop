@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   windows:
-    runs-on: windows-latest
+    runs-on: windows-2025
     timeout-minutes: 360
     defaults:
       run:
@@ -29,15 +29,6 @@ jobs:
         with:
           python-version: '3.11'
           architecture: x64
-      - name: Install MSVC 14.44 ATL
-        shell: pwsh
-        run: |
-          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          $installPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-          if (-not $installPath) { throw 'Visual Studio C++ tools were not found' }
-          $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
-          $process = Start-Process -FilePath $installer -ArgumentList @('modify', '--installPath', "`"$installPath`"", '--add', 'Microsoft.VisualStudio.Component.VC.14.44.17.14.ATL', '--quiet', '--wait', '--norestart') -Wait -PassThru
-          if ($process.ExitCode -notin @(0, 3010)) { throw "Visual Studio installer failed: $($process.ExitCode)" }
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@v1
         with:
