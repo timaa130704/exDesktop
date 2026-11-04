@@ -1,0 +1,75 @@
+name: Windows test build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: cmd
+    env:
+      TBUILD: ${{ github.workspace }}\TBuild
+    steps:
+      - name: Create build directories
+        run: mkdir "%TBUILD%\Libraries"
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: TBuild/exDesktop
+          submodules: recursive
+      - name: Set up Python 3.11
+        id: python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+          sdk: 10.0.26100.0
+          toolset: '14.44'
+      - name: Cache build dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.TBUILD }}\ThirdParty
+            ${{ env.TBUILD }}\Libraries
+          key: windows-x64-libs-${{ hashFiles('TBuild/exDesktop/Telegram/build/prepare/**') }}
+      - name: Prepare Telegram dependencies
+        run: |
+          git config --global user.name Codex
+          git config --global user.email codex@users.noreply.github.com
+          call "%TBUILD%\exDesktop\Telegram\build\prepare\win.bat" silent
+          if errorlevel 1 exit /b 1
+      - name: Prepare Python plugin runtime
+        shell: pwsh
+        run: |
+          $dest = "$env:TBUILD\Libraries\win64\python311"
+          New-Item -ItemType Directory -Force "$dest\embed" | Out-Null
+          Copy-Item "${{ env.pythonLocation }}\include" "$dest\include" -Recurse -Force
+          Copy-Item "${{ env.pythonLocation }}\libs" "$dest\libs" -Recurse -Force
+          Invoke-WebRequest https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip -OutFile "$env:RUNNER_TEMP\python-embed.zip"
+          Expand-Archive "$env:RUNNER_TEMP\python-embed.zip" "$dest\embed" -Force
+      - name: Configure and build
+        run: |
+          cd /d "%TBUILD%\exDesktop\Telegram"
+          call configure.bat x64 -D TDESKTOP_API_TEST=ON -D CMAKE_CONFIGURATION_TYPES=Release -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON
+          if errorlevel 1 exit /b 1
+          cmake --build ..\out --config Release --target Telegram --parallel 4
+          if errorlevel 1 exit /b 1
+      - name: Upload Windows test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: exDesktop-windows-x64-test-api
+          path: |
+            ${{ env.TBUILD }}\exDesktop\out\Release\Telegram.exe
+            ${{ env.TBUILD }}\exDesktop\out\Release\python\
+          if-no-files-found: error
+          retention-days: 7
