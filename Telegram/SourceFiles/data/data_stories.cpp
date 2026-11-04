@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "data/data_stories.h"
+#include "extera/extera_config.h"
 
 #include "base/unixtime.h"
 #include "apiwrap.h"
@@ -1233,6 +1234,9 @@ void Stories::loadAround(FullStoryId id, StoriesContext context) {
 }
 
 void Stories::markAsRead(FullStoryId id, bool viewed) {
+	if (Extera::Bool(u"ghost_stories"_q)) {
+		return;
+	}
 	if (id.peer == _owner->session().userPeerId()) {
 		return;
 	}
@@ -1423,6 +1427,10 @@ void Stories::checkQuitPreventFinished() {
 
 void Stories::sendMarkAsReadRequests() {
 	_markReadTimer.cancel();
+	if (Extera::Bool(u"ghost_stories"_q)) {
+		_markReadPending.clear();
+		return;
+	}
 	for (auto i = begin(_markReadPending); i != end(_markReadPending);) {
 		const auto peerId = *i;
 		if (_markReadRequests.contains(peerId)) {
@@ -1438,6 +1446,11 @@ void Stories::sendMarkAsReadRequests() {
 }
 
 void Stories::sendIncrementViewsRequests() {
+	if (Extera::Bool(u"ghost_stories"_q)) {
+		_incrementViewsTimer.cancel();
+		_incrementViewsPending.clear();
+		return;
+	}
 	if (_incrementViewsPending.empty()) {
 		return;
 	}

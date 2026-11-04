@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "data/data_histories.h"
+#include "extera/extera_config.h"
 
 #include "api/api_text_entities.h"
 #include "data/business/data_shortcut_messages.h"
@@ -719,6 +720,20 @@ void Histories::reportPendingDeliveries() {
 
 void Histories::sendReadRequests() {
 	DEBUG_LOG(("Reading: send requests with count %1.").arg(_states.size()));
+	if (Extera::Bool(u"ghost_read"_q)) {
+		_readRequestsTimer.cancel();
+		auto histories = std::vector<not_null<History*>>();
+		histories.reserve(_states.size());
+		for (auto &[history, state] : _states) {
+			state.willReadTill = 0;
+			state.willReadWhen = 0;
+			histories.push_back(history);
+		}
+		for (const auto history : histories) {
+			checkEmptyState(history);
+		}
+		return;
+	}
 	if (_states.empty()) {
 		return;
 	}

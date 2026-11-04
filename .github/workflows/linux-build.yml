@@ -17,6 +17,15 @@ jobs:
       IMAGE_TAG: exdesktop:centos_env
 
     steps:
+      - name: Check Telegram API credentials
+        env:
+          API_ID: ${{ secrets.TDESKTOP_API_ID }}
+          API_HASH: ${{ secrets.TDESKTOP_API_HASH }}
+        run: |
+          if [ -z "$API_ID" ] || [ -z "$API_HASH" ]; then
+            echo "Set TDESKTOP_API_ID and TDESKTOP_API_HASH repository secrets before building."
+            exit 1
+          fi
       - name: Clone
         uses: actions/checkout@v4
         with:

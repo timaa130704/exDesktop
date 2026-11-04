@@ -3243,6 +3243,13 @@ void BuildPlugins(SectionBuilder &builder) {
 
 void BuildPrivacy(SectionBuilder &builder) {
 	AddCategorySearch(builder, { ExteraPrivacyId() }, [&] {
+		builder.addSkip();
+		builder.card([&] {
+			AddToggle(builder, u"ghost_read"_q, rpl::single(u"Не отправлять отметки о прочтении"_q));
+			AddToggle(builder, u"ghost_online"_q, rpl::single(u"Не отправлять статус в сети"_q));
+			AddToggle(builder, u"ghost_actions"_q, rpl::single(u"Скрывать набор текста и загрузку"_q));
+			AddToggle(builder, u"ghost_stories"_q, rpl::single(u"Не отмечать просмотр историй"_q));
+		});
 		PartGeneral0(builder);
 		PartGeneral6(builder);
 		PartGeneral7(builder);

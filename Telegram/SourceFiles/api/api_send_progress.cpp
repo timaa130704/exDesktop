@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "api/api_send_progress.h"
+#include "extera/extera_config.h"
 
 #include "main/main_session.h"
 #include "history/history.h"
@@ -109,6 +110,9 @@ bool SendProgressManager::updated(const Key &key, bool doing) {
 }
 
 void SendProgressManager::send(const Key &key, int progress) {
+	if (Extera::Bool(u"ghost_actions"_q)) {
+		return;
+	}
 	if (skipRequest(key)) {
 		return;
 	}
