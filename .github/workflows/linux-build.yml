@@ -17,14 +17,20 @@ jobs:
       IMAGE_TAG: exdesktop:centos_env
 
     steps:
-      - name: Check Telegram API credentials
+      - name: Select Telegram API credentials
         env:
           API_ID: ${{ secrets.TDESKTOP_API_ID }}
           API_HASH: ${{ secrets.TDESKTOP_API_HASH }}
         run: |
           if [ -z "$API_ID" ] || [ -z "$API_HASH" ]; then
-            echo "Set TDESKTOP_API_ID and TDESKTOP_API_HASH repository secrets before building."
-            exit 1
+            if [ "$GITHUB_EVENT_NAME" = release ]; then
+              echo "Release builds require TDESKTOP_API_ID and TDESKTOP_API_HASH secrets."
+              exit 1
+            fi
+            echo "Using Telegram Desktop's limited test credentials."
+            echo "API_TEST=ON" >> "$GITHUB_ENV"
+          else
+            echo "API_TEST=OFF" >> "$GITHUB_ENV"
           fi
       - name: Clone
         uses: actions/checkout@v4
@@ -74,18 +80,15 @@ jobs:
           API_ID: ${{ secrets.TDESKTOP_API_ID }}
           API_HASH: ${{ secrets.TDESKTOP_API_HASH }}
         run: |
-          if [ -z "$API_ID" ] || [ -z "$API_HASH" ]; then
-            echo "TDESKTOP_API_ID or TDESKTOP_API_HASH secret is not set"
-            exit 1
-          fi
           docker run --rm \
             -u "$(id -u)" \
             -v "$PWD:/usr/src/tdesktop" \
             -e CONFIG=Release \
-            -e API_ID -e API_HASH \
+            -e API_ID -e API_HASH -e API_TEST \
             "$IMAGE_TAG" \
             bash -c '/usr/src/tdesktop/Telegram/build/docker/centos_env/build.sh \
               -D CMAKE_CONFIGURATION_TYPES=Release \
+              -D TDESKTOP_API_TEST="$API_TEST" \
               -D TDESKTOP_API_ID="$API_ID" \
               -D TDESKTOP_API_HASH="$API_HASH" \
               -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON \
@@ -133,7 +136,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: exDesktop-linux-x64
+          name: exDesktop-linux-x64-${{ env.API_TEST == 'ON' && 'test-api' || 'production-api' }}
           path: exDesktop-linux-x64.*.tar.gz
           retention-days: 7
 
